@@ -145,7 +145,7 @@ public class NewlineAtEndOfFileCheckTest
 
     @Test(expected = CheckstyleException.class)
     public void testSetLineSeparatorFailure()
-        throws Exception {
+            throws Exception {
         final DefaultConfiguration checkConfig =
             createCheckConfig(NewlineAtEndOfFileCheck.class);
         checkConfig.addAttribute("lineSeparator", "ct");
@@ -189,7 +189,7 @@ public class NewlineAtEndOfFileCheckTest
                 .getDeclaredMethod("endsWithNewline", RandomAccessFile.class);
         method.setAccessible(true);
         final RandomAccessFile file = mock(RandomAccessFile.class);
-        when(file.length()).thenReturn(2000000L);
+        when(file.length()).thenReturn(2_000_000L);
         try {
             method.invoke(new NewlineAtEndOfFileCheck(), file);
         }

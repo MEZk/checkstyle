@@ -11,6 +11,9 @@
               files="JavadocStyleCheck\.java|AbstractTypeAwareCheck\.java|XMLLogger\.java"/>
     <suppress checks="MultipleStringLiteralsExtended"
               files=".*[\\/]src[\\/](test|it)[\\/]"/>
+    <!-- ParseTreeBuilder is generated, to keep ease of generation violations are suppressed -->
+    <suppress checks="LineLengthExtended"
+              files="ParseTreeBuilder\.java"/>
 
     <!-- Override methods from base class.
     Issue: https://github.com/sevntu-checkstyle/sevntu.checkstyle/issues/166-->
@@ -20,11 +23,14 @@
     <suppress checks="SimpleAccessorNameNotation"
               files="ClassFanOutComplexityCheck\.java"
               lines="76"/>
+    <suppress checks="SimpleAccessorNameNotation"
+              files="SingleSpaceSeparatorCheck\.java"
+              lines="110"/>
 
     <!-- These classes are deprecated and will be removed soon. -->
     <suppress checks="ForbidWildcardAsReturnType"
               files="AbstractTypeAwareCheck\.java"
-              lines="230,246,411"/>
+              lines="230,246,409"/>
     <suppress checks="ForbidWildcardAsReturnType"
               files="ClassResolver\.java"
               lines="72,184"/>
@@ -45,4 +51,9 @@
     <suppress checks="CustomDeclarationOrder"
               files="AbstractViolationReporter.java"
               lines="152,164"/>
+
+    <!-- testing for catch Error is part of 100% coverage -->
+    <suppress checks="IllegalCatchExtended"
+              files="CheckerTest\.java"
+              lines="577"/>
 </suppressions>

@@ -61,9 +61,6 @@
             <property name="targetConstantTypes" value="LITERAL_NULL,LITERAL_TRUE,LITERAL_FALSE,NUM_INT,NUM_DOUBLE,NUM_LONG,NUM_FLOAT"/>
         </module>
         <module name="EitherLogOrThrowCheck"/>
-        <module name="SingleSpaceSeparator">
-            <metadata name="validateCommentNodes" value="false"/>
-        </module>
         <module name="IllegalCatchExtended">
             <property name="allowRethrow" value="true"/>
         </module>
@@ -99,7 +96,7 @@
             <property name="ignoreConstructor" value="true"/>
             <property name="ignoreField" value="true"/>
             <property name="ignoreMethod" value="true"/>
-            <property name="ignorePattern" value="^ *\* *[^ ]+$"/>
+            <property name="ignorePattern" value="^( *\* *[^ ]+)|((package|import) .*)$"/>
         </module>
         <module name="AvoidHidingCauseException"/>
         <module name="MultipleStringLiteralsExtended">

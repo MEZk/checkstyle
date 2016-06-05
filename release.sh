@@ -1,17 +1,18 @@
 #!/usr/bin/bash
 set -e
 
+# Make sure you prepared your PC for automative deployment
 #https://github.com/checkstyle/checkstyle/wiki/How-to-make-a-release
 
 SF_USER=romanivanov
-PREV_RELEASE=6.16.1
-RELEASE=$(git describe $(git rev-list --tags --max-count=1) | sed "s/checkstyle-//")
+RELEASE=$(xmlstarlet sel -N pom=http://maven.apache.org/POM/4.0.0 -t -m pom:project -v pom:version pom.xml | sed "s/-SNAPSHOT//")
+PREV_RELEASE=$(git describe $(git rev-list --tags --max-count=1) | sed "s/checkstyle-//")
 
-echo "PREVIOUS RELESE version:"$PREV_RELEASE
-echo "RELESE version:"$RELEASE
+echo "PREVIOUS RELEASE version:"$PREV_RELEASE
+echo "RELEASE version:"$RELEASE
 
 #############################
-
+echo "Please provide password for $SF_USER,checkstyle@shell.sourceforge.net"
 echo "exit" | ssh -t $SF_USER,checkstyle@shell.sourceforge.net create
 
 # Version bump in pom.xml - https://github.com/checkstyle/checkstyle/commits/master
@@ -48,7 +49,7 @@ mvn -Passembly clean package
 #Publish them to sourceforce
 FRS_PATH=/home/frs/project/checkstyle/checkstyle/$RELEASE
 ssh $SF_USER,checkstyle@shell.sourceforge.net "mkdir -p $FRS_PATH"
-# !!! THIS WILL AS A PASSWORD !!
+# !!! THIS WILL ASK A SOURCEFORGE PASSWORD !!
 scp target/*.jar $SF_USER@frs.sourceforge.net:$FRS_PATH
 scp target/*.tar.gz $SF_USER@frs.sourceforge.net:$FRS_PATH
 scp target/*.zip $SF_USER@frs.sourceforge.net:$FRS_PATH

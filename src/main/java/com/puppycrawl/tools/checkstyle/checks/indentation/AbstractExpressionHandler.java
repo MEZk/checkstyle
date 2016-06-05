@@ -215,8 +215,18 @@ public abstract class AbstractExpressionHandler {
      * @return the start of the line for the given expression
      */
     protected final int getLineStart(DetailAST ast) {
-        final String line = indentCheck.getLine(ast.getLineNo() - 1);
-        return getLineStart(line);
+        return getLineStart(ast.getLineNo());
+    }
+
+    /**
+     * Get the start of the line for the given line number.
+     *
+     * @param lineNo   the line number to find the start for
+     *
+     * @return the start of the line for the given expression
+     */
+    protected final int getLineStart(int lineNo) {
+        return getLineStart(indentCheck.getLine(lineNo - 1));
     }
 
     /**
@@ -278,44 +288,42 @@ public abstract class AbstractExpressionHandler {
                                   IndentLevel indentLevel,
                                   boolean firstLineMatches,
                                   int firstLine) {
-        if (lines.isEmpty()) {
-            return;
-        }
+        if (!lines.isEmpty()) {
+            // check first line
+            final int startLine = lines.firstLine();
+            final int endLine = lines.lastLine();
+            final int startCol = lines.firstLineCol();
 
-        // check first line
-        final int startLine = lines.firstLine();
-        final int endLine = lines.lastLine();
-        final int startCol = lines.firstLineCol();
+            final int realStartCol =
+                getLineStart(indentCheck.getLine(startLine - 1));
 
-        final int realStartCol =
-            getLineStart(indentCheck.getLine(startLine - 1));
+            if (realStartCol == startCol) {
+                checkLineIndent(startLine, startCol, indentLevel,
+                    firstLineMatches);
+            }
 
-        if (realStartCol == startCol) {
-            checkLineIndent(startLine, startCol, indentLevel,
-                firstLineMatches);
-        }
+            // if first line starts the line, following lines are indented
+            // one level; but if the first line of this expression is
+            // nested with the previous expression (which is assumed if it
+            // doesn't start the line) then don't indent more, the first
+            // indentation is absorbed by the nesting
 
-        // if first line starts the line, following lines are indented
-        // one level; but if the first line of this expression is
-        // nested with the previous expression (which is assumed if it
-        // doesn't start the line) then don't indent more, the first
-        // indentation is absorbed by the nesting
+            IndentLevel theLevel = indentLevel;
+            if (firstLineMatches
+                || firstLine > mainAst.getLineNo() && shouldIncreaseIndent()) {
+                theLevel = new IndentLevel(indentLevel, getBasicOffset());
+            }
 
-        IndentLevel theLevel = indentLevel;
-        if (firstLineMatches
-            || firstLine > mainAst.getLineNo() && shouldIncreaseIndent()) {
-            theLevel = new IndentLevel(indentLevel, getBasicOffset());
-        }
+            // check following lines
+            for (int i = startLine + 1; i <= endLine; i++) {
+                final Integer col = lines.getStartColumn(i);
+                // startCol could be null if this line didn't have an
+                // expression that was required to be checked (it could be
+                // checked by a child expression)
 
-        // check following lines
-        for (int i = startLine + 1; i <= endLine; i++) {
-            final Integer col = lines.getStartColumn(i);
-            // startCol could be null if this line didn't have an
-            // expression that was required to be checked (it could be
-            // checked by a child expression)
-
-            if (col != null) {
-                checkLineIndent(i, col, theLevel, false);
+                if (col != null) {
+                    checkLineIndent(i, col, theLevel, false);
+                }
             }
         }
     }
@@ -367,6 +375,22 @@ public abstract class AbstractExpressionHandler {
      */
     protected void checkWrappingIndentation(DetailAST firstNode, DetailAST lastNode) {
         indentCheck.getLineWrappingHandler().checkIndentation(firstNode, lastNode);
+    }
+
+    /**
+     * Checks indentation on wrapped lines between and including
+     * {@code firstNode} and {@code lastNode}.
+     *
+     * @param firstNode First node to start examining.
+     * @param lastNode Last node to examine inclusively.
+     * @param wrappedIndentLevel Indentation all wrapped lines should use.
+     * @param startIndent Indentation first line before wrapped lines used.
+     * @param ignoreFirstLine Test if first line's indentation should be checked or not.
+     */
+    protected void checkWrappingIndentation(DetailAST firstNode, DetailAST lastNode,
+            int wrappedIndentLevel, int startIndent, boolean ignoreFirstLine) {
+        indentCheck.getLineWrappingHandler().checkIndentation(firstNode, lastNode,
+                wrappedIndentLevel, startIndent, ignoreFirstLine);
     }
 
     /**
@@ -470,23 +494,21 @@ public abstract class AbstractExpressionHandler {
      */
     protected final void findSubtreeLines(LineSet lines, DetailAST tree,
         boolean allowNesting) {
-        if (indentCheck.getHandlerFactory().isHandledType(tree.getType())) {
-            return;
-        }
+        if (!indentCheck.getHandlerFactory().isHandledType(tree.getType())) {
+            final int lineNum = tree.getLineNo();
+            final Integer colNum = lines.getStartColumn(lineNum);
 
-        final int lineNum = tree.getLineNo();
-        final Integer colNum = lines.getStartColumn(lineNum);
+            final int thisLineColumn = expandedTabsColumnNo(tree);
+            if (colNum == null || thisLineColumn < colNum) {
+                lines.addLineAndCol(lineNum, thisLineColumn);
+            }
 
-        final int thisLineColumn = expandedTabsColumnNo(tree);
-        if (colNum == null || thisLineColumn < colNum) {
-            lines.addLineAndCol(lineNum, thisLineColumn);
-        }
-
-        // check children
-        for (DetailAST node = tree.getFirstChild();
-            node != null;
-            node = node.getNextSibling()) {
-            findSubtreeLines(lines, node, allowNesting);
+            // check children
+            for (DetailAST node = tree.getFirstChild();
+                node != null;
+                node = node.getNextSibling()) {
+                findSubtreeLines(lines, node, allowNesting);
+            }
         }
     }
 
@@ -579,11 +601,10 @@ public abstract class AbstractExpressionHandler {
     protected final void checkLParen(final DetailAST lparen) {
         // the rcurly can either be at the correct indentation, or on the
         // same line as the lcurly
-        if (lparen == null
-            || getIndent().isAcceptable(expandedTabsColumnNo(lparen))
-            || !isOnStartOfLine(lparen)) {
-            return;
+        if (lparen != null
+                && !getIndent().isAcceptable(expandedTabsColumnNo(lparen))
+                && isOnStartOfLine(lparen)) {
+            logError(lparen, "lparen", expandedTabsColumnNo(lparen));
         }
-        logError(lparen, "lparen", expandedTabsColumnNo(lparen));
     }
 }

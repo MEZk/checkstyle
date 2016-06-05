@@ -21,12 +21,15 @@ package com.puppycrawl.tools.checkstyle.checks.imports;
 
 import java.io.File;
 import java.net.URI;
+import java.util.Set;
 
 import org.apache.commons.beanutils.ConversionException;
 
+import com.google.common.collect.ImmutableSet;
 import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.CheckstyleException;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
+import com.puppycrawl.tools.checkstyle.api.ExternalResourceHolder;
 import com.puppycrawl.tools.checkstyle.api.FullIdent;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
 import com.puppycrawl.tools.checkstyle.utils.CommonUtils;
@@ -44,7 +47,7 @@ import com.puppycrawl.tools.checkstyle.utils.CommonUtils;
  *
  * @author Oliver Burn
  */
-public class ImportControlCheck extends AbstractCheck {
+public class ImportControlCheck extends AbstractCheck implements ExternalResourceHolder {
 
     /**
      * A key is pointing to the warning message text in "messages.properties"
@@ -68,6 +71,9 @@ public class ImportControlCheck extends AbstractCheck {
      * A part of message for exception.
      */
     private static final String UNABLE_TO_LOAD = "Unable to load ";
+
+    /** Location of import control file. */
+    private String fileLocation;
 
     /** The root package controller. */
     private PkgControl root;
@@ -135,6 +141,11 @@ public class ImportControlCheck extends AbstractCheck {
         }
     }
 
+    @Override
+    public Set<String> getExternalResourceLocations() {
+        return ImmutableSet.of(fileLocation);
+    }
+
     /**
      * Set the name for the file containing the import control
      * configuration. It will cause the file to be loaded.
@@ -143,15 +154,14 @@ public class ImportControlCheck extends AbstractCheck {
      */
     public void setFile(final String name) {
         // Handle empty param
-        if (CommonUtils.isBlank(name)) {
-            return;
-        }
-
-        try {
-            root = ImportControlLoader.load(new File(name).toURI());
-        }
-        catch (final CheckstyleException ex) {
-            throw new ConversionException(UNABLE_TO_LOAD + name, ex);
+        if (!CommonUtils.isBlank(name)) {
+            try {
+                root = ImportControlLoader.load(new File(name).toURI());
+                fileLocation = name;
+            }
+            catch (final CheckstyleException ex) {
+                throw new ConversionException(UNABLE_TO_LOAD + name, ex);
+            }
         }
     }
 
@@ -163,21 +173,21 @@ public class ImportControlCheck extends AbstractCheck {
      */
     public void setUrl(final String url) {
         // Handle empty param
-        if (CommonUtils.isBlank(url)) {
-            return;
-        }
-        final URI uri;
-        try {
-            uri = URI.create(url);
-        }
-        catch (final IllegalArgumentException ex) {
-            throw new ConversionException("Syntax error in url " + url, ex);
-        }
-        try {
-            root = ImportControlLoader.load(uri);
-        }
-        catch (final CheckstyleException ex) {
-            throw new ConversionException(UNABLE_TO_LOAD + url, ex);
+        if (!CommonUtils.isBlank(url)) {
+            final URI uri;
+            try {
+                uri = URI.create(url);
+            }
+            catch (final IllegalArgumentException ex) {
+                throw new ConversionException("Syntax error in url " + url, ex);
+            }
+            try {
+                root = ImportControlLoader.load(uri);
+                fileLocation = url;
+            }
+            catch (final CheckstyleException ex) {
+                throw new ConversionException(UNABLE_TO_LOAD + url, ex);
+            }
         }
     }
 }

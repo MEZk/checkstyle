@@ -22,7 +22,7 @@
 
   <groupId>com.puppycrawl.tools</groupId>
   <artifactId>checkstyle</artifactId>
-  <version>6.18-SNAPSHOT</version>
+  <version>7.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>checkstyle</name>
@@ -191,7 +191,7 @@
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <projectVersion>${project.version}</projectVersion>
     <antlr4.version>4.5.3</antlr4.version>
-    <maven.site.plugin.version>3.4</maven.site.plugin.version>
+    <maven.site.plugin.version>3.5.1</maven.site.plugin.version>
     <maven.findbugs.plugin.version>3.0.3</maven.findbugs.plugin.version>
     <maven.pmd.plugin.version>3.6</maven.pmd.plugin.version>
     <maven.jacoco.plugin.version>0.7.6.201602180812</maven.jacoco.plugin.version>
@@ -200,7 +200,7 @@
     <tools.jar.version>1.7.0</tools.jar.version>
     <tools.jar.path>${java.home}/../lib/tools.jar</tools.jar.path>
     <java.version>1.7</java.version>
-    <checkstyle.version>6.17</checkstyle.version>
+    <checkstyle.version>6.18</checkstyle.version>
   </properties>
 
   <!-- that repositories are required for testing plugin's snapshot version -->
@@ -232,6 +232,21 @@
       <groupId>commons-beanutils</groupId>
       <artifactId>commons-beanutils</artifactId>
       <version>1.9.2</version>
+      <!--Upgrading to commons-collections 3.2.2 to fix security vulnerability CVE-2015-6420.
+       This change can be reverted when upgrading to commons-beanutils 1.9.3
+       https://issues.apache.org/jira/browse/BEANUTILS-482-->
+      <exclusions>
+        <exclusion>
+          <groupId>commons-collections</groupId>
+          <artifactId>commons-collections</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- remove commons-collections dependency after commons-beanutils 1.9.3 -->
+    <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+      <version>3.2.2</version>
     </dependency>
     <dependency>
       <groupId>commons-cli</groupId>
@@ -266,31 +281,31 @@
     <dependency>
       <groupId>nl.jqno.equalsverifier</groupId>
       <artifactId>equalsverifier</artifactId>
-      <version>2.0.2</version>
+      <version>2.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-api-mockito</artifactId>
-      <version>1.6.4</version>
+      <version>1.6.5</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-module-junit4</artifactId>
-      <version>1.6.4</version>
+      <version>1.6.5</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>2.4</version>
+      <version>2.5</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jgit</groupId>
       <artifactId>org.eclipse.jgit</artifactId>
-      <version>4.3.0.201604071810-r</version>
+      <version>4.3.1.201605051710-r</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -449,11 +464,6 @@
         <version>${maven.checkstyle.plugin.version}</version>
         <dependencies>
           <dependency>
-            <groupId>com.puppycrawl.tools</groupId>
-            <artifactId>checkstyle</artifactId>
-            <version>${checkstyle.version}</version>
-          </dependency>
-          <dependency>
             <groupId>com.github.sevntu.checkstyle</groupId>
             <artifactId>sevntu-checkstyle-maven-plugin</artifactId>
             <version>${maven.sevntu.checkstyle.plugin.version}</version>
@@ -470,7 +480,8 @@
           <maxAllowedViolations>0</maxAllowedViolations>
           <violationSeverity>error</violationSeverity>
           <propertyExpansion>project.basedir=${project.basedir}</propertyExpansion>
-          <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+          <sourceDirectory>${project.basedir}/src</sourceDirectory>
+          <excludes>**/it/resources/**/*,**/test/resources/**/*,**/test/resources-noncompilable/**/*</excludes>
         </configuration>
         <executions>
           <execution>
@@ -511,7 +522,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
-        <version>2.7</version>
+        <version>3.0.0</version>
       </plugin>
 
       <plugin>
@@ -604,11 +615,12 @@
         <version>${maven.site.plugin.version}</version>
         <configuration>
           <xdocDirectory>${basedir}/src/xdocs</xdocDirectory>
-          <validate>true</validate>
+          <!-- false till https://issues.apache.org/jira/browse/MSITE-774 -->
+          <validate>false</validate>
         </configuration>
         <dependencies>
-          <!-- add support for ssh/scp -->
           <dependency>
+            <!-- add support for ssh/scp -->
             <groupId>org.apache.maven.wagon</groupId>
             <artifactId>wagon-ssh</artifactId>
             <version>2.10</version>
@@ -844,7 +856,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>2.6</version>
+        <version>3.0.0</version>
         <configuration>
           <archive>
             <manifest>
@@ -948,15 +960,15 @@
       <plugin>
       <groupId>de.thetaphi</groupId>
       <artifactId>forbiddenapis</artifactId>
-      <version>2.0</version>
+      <version>2.1</version>
       <configuration>
         <targetVersion>${java.version}</targetVersion>
-        <internalRuntimeForbidden>true</internalRuntimeForbidden>
         <failOnUnsupportedJava>false</failOnUnsupportedJava>
         <bundledSignatures>
           <bundledSignature>jdk-unsafe</bundledSignature>
           <bundledSignature>jdk-deprecated</bundledSignature>
           <bundledSignature>jdk-system-out</bundledSignature>
+          <bundledSignature>jdk-non-portable</bundledSignature>
         </bundledSignatures>
         <excludes>
           <!-- system-out is ok there, that is CLI -->
@@ -1161,9 +1173,6 @@
             <excludedLink>http://sonar-plugins.codehaus.org/maven-report</excludedLink>
             <!-- SSLHandshakeException but page is opening -->
             <excludedLink>http://www.sickboy.cz/checkstyle/</excludedLink>
-            <!-- Excluded due to Checkstyle's issue #549 until https://issues.apache.org/jira/browse/MJAVADOC-428
-            and http://jira.codehaus.org/browse/DOXIA-525 and http://jira.codehaus.org/browse/MLINKCHECK-21 will be fixed -->
-            <excludedLink>**/com/puppycrawl/**</excludedLink>
             <!-- Excluded due to Checkstyle's issue #549 until https://issues.apache.org/jira/browse/MJAVADOC-428 will be fixed -->
             <excludedLink>http://docs.oracle.com/javase/7/docs/api/org/xml/sax/helpers.DefaultHandler.html?*</excludedLink>
             <!-- Excluded due to Maven Enforcer Plugin's issue #234: https://issues.apache.org/jira/browse/MENFORCER-234-->
@@ -1218,6 +1227,9 @@
             <excludedLink>https://www.scm-manager.org/</excludedLink>
             <!-- linkcheck plugin can not resolve &amps; inside url -->
             <excludedLink>https://flattr.com/submit/</excludedLink>
+            <!-- Too unstable sites to keep validate them -->
+            <excludedLink>http://tide.olympe.in/*</excludedLink>
+            <excludedLink>http://dl.acm.org/*</excludedLink>
           </excludedLinks>
         </configuration>
       </plugin>

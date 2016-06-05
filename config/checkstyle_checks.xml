@@ -196,7 +196,9 @@
         <property name="ignoreSetter" value="true"/>
         <property name="setterCanReturnItsClass" value="true"/>
     </module>
-    <module name="IllegalCatch"/>
+    <module name="IllegalCatch">
+        <property name="illegalClassNames" value="java.lang.Exception, java.lang.Throwable, java.lang.RuntimeException, java.lang.NullPointerException"/>
+    </module>
     <module name="IllegalInstantiation"/>
     <module name="IllegalThrows"/>
     <module name="IllegalToken"/>
@@ -229,7 +231,9 @@
     <module name="PackageDeclaration"/>
     <module name="ParameterAssignment"/>
     <module name="RequireThis"/>
-    <module name="ReturnCount"/>
+    <module name="ReturnCount">
+      <property name="maxForVoid" value="0"/>
+    </module>
     <module name="SimplifyBooleanExpression"/>
     <module name="SimplifyBooleanReturn"/>
     <module name="StringLiteralEquality"/>
@@ -322,6 +326,7 @@
       <property name="basicOffset" value="4"/>
       <property name="braceAdjustment" value="0"/>
       <property name="caseIndent" value="4"/>
+      <property name="throwsIndent" value="8"/>
     </module>
     <module name="OuterTypeFilename"/>
     <module name="TodoComment">
@@ -444,6 +449,9 @@
     <module name="SeparatorWrap">
       <property name="tokens" value="COMMA"/>
       <property name="option" value="EOL"/>
+    </module>
+    <module name="SingleSpaceSeparator">
+      <property name="validateComments" value="false"/>
     </module>
     <module name="TypecastParenPad"/>
     <module name="WhitespaceAfter"/>

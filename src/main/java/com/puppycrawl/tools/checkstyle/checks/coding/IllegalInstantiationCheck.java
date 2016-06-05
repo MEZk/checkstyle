@@ -20,7 +20,6 @@
 package com.puppycrawl.tools.checkstyle.checks.coding;
 
 import java.util.Set;
-import java.util.StringTokenizer;
 
 import antlr.collections.AST;
 
@@ -73,9 +72,6 @@ public class IllegalInstantiationCheck
     /** {@link java.lang} package as string */
     private static final String JAVA_LANG = "java.lang.";
 
-    /** Set of fully qualified class names. E.g. "java.lang.Boolean" */
-    private final Set<String> illegalClasses = Sets.newHashSet();
-
     /** The imports for the file. */
     private final Set<FullIdent> imports = Sets.newHashSet();
 
@@ -84,6 +80,9 @@ public class IllegalInstantiationCheck
 
     /** The instantiations in the file. */
     private final Set<DetailAST> instantiations = Sets.newHashSet();
+
+    /** Set of fully qualified class names. E.g. "java.lang.Boolean" */
+    private Set<String> illegalClasses = Sets.newHashSet();
 
     /** Name of the package. */
     private String pkgName;
@@ -201,18 +200,16 @@ public class IllegalInstantiationCheck
     private void postProcessLiteralNew(DetailAST newTokenAst) {
         final DetailAST typeNameAst = newTokenAst.getFirstChild();
         final AST nameSibling = typeNameAst.getNextSibling();
-        if (nameSibling.getType() == TokenTypes.ARRAY_DECLARATOR) {
-            // ast == "new Boolean[]"
-            return;
-        }
-
-        final FullIdent typeIdent = FullIdent.createFullIdent(typeNameAst);
-        final String typeName = typeIdent.getText();
-        final int lineNo = newTokenAst.getLineNo();
-        final int colNo = newTokenAst.getColumnNo();
-        final String fqClassName = getIllegalInstantiation(typeName);
-        if (fqClassName != null) {
-            log(lineNo, colNo, MSG_KEY, fqClassName);
+        if (nameSibling.getType() != TokenTypes.ARRAY_DECLARATOR) {
+            // ast != "new Boolean[]"
+            final FullIdent typeIdent = FullIdent.createFullIdent(typeNameAst);
+            final String typeName = typeIdent.getText();
+            final int lineNo = newTokenAst.getLineNo();
+            final int colNo = newTokenAst.getColumnNo();
+            final String fqClassName = getIllegalInstantiation(typeName);
+            if (fqClassName != null) {
+                log(lineNo, colNo, MSG_KEY, fqClassName);
+            }
         }
     }
 
@@ -355,11 +352,7 @@ public class IllegalInstantiationCheck
      * Sets the classes that are illegal to instantiate.
      * @param names a comma separate list of class names
      */
-    public void setClasses(String names) {
-        illegalClasses.clear();
-        final StringTokenizer tok = new StringTokenizer(names, ",");
-        while (tok.hasMoreTokens()) {
-            illegalClasses.add(tok.nextToken());
-        }
+    public void setClasses(String... names) {
+        illegalClasses = Sets.newHashSet(names);
     }
 }

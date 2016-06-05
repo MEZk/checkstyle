@@ -283,7 +283,7 @@ public class CheckstyleAntTask extends Task {
         try {
             // output version info in debug mode
             final ResourceBundle compilationProperties = ResourceBundle
-                    .getBundle("checkstylecompilation");
+                    .getBundle("checkstylecompilation", Locale.ROOT);
             final String version = compilationProperties
                     .getString("checkstyle.compile.version");
             final String compileTimestamp = compilationProperties
@@ -600,7 +600,7 @@ public class CheckstyleAntTask extends Task {
          * @throws IOException if an error occurs
          */
         private AuditListener createDefaultLogger(Task task)
-            throws IOException {
+                throws IOException {
             if (toFile == null || !useFile) {
                 return new DefaultLogger(
                     new LogOutputStream(task, Project.MSG_DEBUG),

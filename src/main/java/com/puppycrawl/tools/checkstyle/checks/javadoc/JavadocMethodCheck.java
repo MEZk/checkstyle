@@ -20,6 +20,7 @@
 package com.puppycrawl.tools.checkstyle.checks.javadoc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -220,15 +221,8 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
      * Sets list of annotations.
      * @param userAnnotations user's value.
      */
-    public void setAllowedAnnotations(String userAnnotations) {
-        final List<String> annotations = new ArrayList<>();
-        final String[] sAnnotations = userAnnotations.split(",");
-        for (int i = 0; i < sAnnotations.length; i++) {
-            sAnnotations[i] = sAnnotations[i].trim();
-        }
-
-        Collections.addAll(annotations, sAnnotations);
-        allowedAnnotations = annotations;
+    public void setAllowedAnnotations(String... userAnnotations) {
+        allowedAnnotations = Arrays.asList(userAnnotations);
     }
 
     /**
@@ -486,33 +480,31 @@ public class JavadocMethodCheck extends AbstractTypeAwareCheck {
     private void checkComment(DetailAST ast, TextBlock comment) {
         final List<JavadocTag> tags = getMethodTags(comment);
 
-        if (hasShortCircuitTag(ast, tags)) {
-            return;
-        }
-
-        final Iterator<JavadocTag> it = tags.iterator();
-        if (ast.getType() == TokenTypes.ANNOTATION_FIELD_DEF) {
-            checkReturnTag(tags, ast.getLineNo(), true);
-        }
-        else {
-            // Check for inheritDoc
-            boolean hasInheritDocTag = false;
-            while (!hasInheritDocTag && it.hasNext()) {
-                hasInheritDocTag = it.next().isInheritDocTag();
+        if (!hasShortCircuitTag(ast, tags)) {
+            final Iterator<JavadocTag> it = tags.iterator();
+            if (ast.getType() == TokenTypes.ANNOTATION_FIELD_DEF) {
+                checkReturnTag(tags, ast.getLineNo(), true);
             }
-            final boolean reportExpectedTags = !hasInheritDocTag && !hasAllowedAnnotations(ast);
+            else {
+                // Check for inheritDoc
+                boolean hasInheritDocTag = false;
+                while (!hasInheritDocTag && it.hasNext()) {
+                    hasInheritDocTag = it.next().isInheritDocTag();
+                }
+                final boolean reportExpectedTags = !hasInheritDocTag && !hasAllowedAnnotations(ast);
 
-            checkParamTags(tags, ast, reportExpectedTags);
-            checkThrowsTags(tags, getThrows(ast), reportExpectedTags);
-            if (CheckUtils.isNonVoidMethod(ast)) {
-                checkReturnTag(tags, ast.getLineNo(), reportExpectedTags);
+                checkParamTags(tags, ast, reportExpectedTags);
+                checkThrowsTags(tags, getThrows(ast), reportExpectedTags);
+                if (CheckUtils.isNonVoidMethod(ast)) {
+                    checkReturnTag(tags, ast.getLineNo(), reportExpectedTags);
+                }
             }
-        }
 
-        // Dump out all unused tags
-        for (JavadocTag javadocTag : tags) {
-            if (!javadocTag.isSeeOrInheritDocTag()) {
-                log(javadocTag.getLineNo(), MSG_UNUSED_TAG_GENERAL);
+            // Dump out all unused tags
+            for (JavadocTag javadocTag : tags) {
+                if (!javadocTag.isSeeOrInheritDocTag()) {
+                    log(javadocTag.getLineNo(), MSG_UNUSED_TAG_GENERAL);
+                }
             }
         }
     }

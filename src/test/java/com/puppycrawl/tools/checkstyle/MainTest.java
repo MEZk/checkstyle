@@ -21,6 +21,7 @@ package com.puppycrawl.tools.checkstyle;
 
 import static com.puppycrawl.tools.checkstyle.internal.TestUtils.assertUtilsClassHasPrivateConstructor;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.powermock.api.mockito.PowerMockito.mock;
@@ -54,6 +55,7 @@ public class MainTest {
           "usage: java com.puppycrawl.tools.checkstyle.Main [options] -c <config.xml>"
         + " file...%n"
         + " -c <arg>                Sets the check configuration file to use.%n"
+        + " -d,--debug              Print all debug logging of CheckStyle utility%n"
         + " -f <arg>                Sets the output format. (plain|xml). Defaults to"
         + " plain%n"
         + " -j,--javadocTree        Print Parse tree of the Javadoc comment%n"
@@ -235,7 +237,7 @@ public class MainTest {
             public void checkAssertion() throws IOException {
                 final String expectedPath = getFilePath("InputMain.java");
                 final ResourceBundle compilationProperties =
-                        ResourceBundle.getBundle("checkstylecompilation");
+                        ResourceBundle.getBundle("checkstylecompilation", Locale.ROOT);
                 final String version = compilationProperties
                     .getString("checkstyle.compile.version");
                 assertEquals(String.format(Locale.ROOT,
@@ -503,7 +505,7 @@ public class MainTest {
                 method.invoke(null, new File(file.getAbsolutePath()));
             }
             else {
-                method.invoke(null, new File(File.separator + ":invalid"));
+                method.invoke(null, new File(File.separator + "\0:invalid"));
             }
             fail("Exception was expected");
         }
@@ -631,7 +633,7 @@ public class MainTest {
                                 + "Checkstyle ends with 1 errors.%n");
                 assertEquals(expectedExceptionMessage, systemOut.getLog());
 
-                final String exceptionFirstLine =  String.format(Locale.ROOT,
+                final String exceptionFirstLine = String.format(Locale.ROOT,
                         "com.puppycrawl.tools.checkstyle.api."
                         + "CheckstyleException: Exception was thrown while processing "
                         + new File(getNonCompilablePath("InputIncorrectClass.java")).getPath()
@@ -835,5 +837,16 @@ public class MainTest {
         });
 
         Main.main("-o", file.getCanonicalPath(), "-t", getPath("checks/metrics"));
+    }
+
+    @Test
+    public void testDebugOption() throws Exception {
+        exit.checkAssertionAfterwards(new Assertion() {
+            @Override
+            public void checkAssertion() {
+                assertNotEquals("", systemErr.getLog());
+            }
+        });
+        Main.main("-c", "/google_checks.xml", getPath("InputMain.java"), "-d");
     }
 }

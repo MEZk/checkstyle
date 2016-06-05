@@ -39,6 +39,7 @@ import com.puppycrawl.tools.checkstyle.api.AutomaticBean;
 import com.puppycrawl.tools.checkstyle.api.CheckstyleException;
 import com.puppycrawl.tools.checkstyle.api.Configuration;
 import com.puppycrawl.tools.checkstyle.api.Context;
+import com.puppycrawl.tools.checkstyle.api.ExternalResourceHolder;
 import com.puppycrawl.tools.checkstyle.api.FileSetCheck;
 import com.puppycrawl.tools.checkstyle.api.FileText;
 import com.puppycrawl.tools.checkstyle.api.Filter;
@@ -54,6 +55,7 @@ import com.puppycrawl.tools.checkstyle.utils.CommonUtils;
  * @author Oliver Burn
  * @author <a href="mailto:stephane.bailliez@wanadoo.fr">Stephane Bailliez</a>
  * @author lkuehne
+ * @author Andrei Selkin
  */
 public class Checker extends AutomaticBean implements MessageDispatcher {
     /** Logger for Checker. */
@@ -133,6 +135,230 @@ public class Checker extends AutomaticBean implements MessageDispatcher {
         cache.load();
     }
 
+    /**
+     * Removes filter.
+     * @param filter filter to remove.
+     */
+    public void removeFilter(Filter filter) {
+        filters.removeFilter(filter);
+    }
+
+    /** Cleans up the object. **/
+    public void destroy() {
+        listeners.clear();
+        filters.clear();
+        if (cache != null) {
+            try {
+                cache.persist();
+            }
+            catch (IOException ex) {
+                throw new IllegalStateException("Unable to persist cache file.", ex);
+            }
+        }
+    }
+
+    /**
+     * Removes a given listener.
+     * @param listener a listener to remove
+     */
+    public void removeListener(AuditListener listener) {
+        listeners.remove(listener);
+    }
+
+    /**
+     * Sets base directory.
+     * @param basedir the base directory to strip off in file names
+     */
+    public void setBasedir(String basedir) {
+        this.basedir = basedir;
+    }
+
+    /**
+     * Processes a set of files with all FileSetChecks.
+     * Once this is done, it is highly recommended to call for
+     * the destroy method to close and remove the listeners.
+     * @param files the list of files to be audited.
+     * @return the total number of errors found
+     * @throws CheckstyleException if error condition within Checkstyle occurs
+     * @see #destroy()
+     */
+    public int process(List<File> files) throws CheckstyleException {
+        if (cache != null) {
+            cache.putExternalResources(getExternalResourceLocations());
+        }
+
+        // Prepare to start
+        fireAuditStarted();
+        for (final FileSetCheck fsc : fileSetChecks) {
+            fsc.beginProcessing(charset);
+        }
+
+        processFiles(files);
+
+        // Finish up
+        for (final FileSetCheck fsc : fileSetChecks) {
+            // It may also log!!!
+            fsc.finishProcessing();
+        }
+
+        for (final FileSetCheck fsc : fileSetChecks) {
+            // It may also log!!!
+            fsc.destroy();
+        }
+
+        final int errorCount = counter.getCount();
+        fireAuditFinished();
+        return errorCount;
+    }
+
+    /**
+     * Returns a set of external configuration resource locations which are used by all file set
+     * checks and filters.
+     * @return a set of external configuration resource locations which are used by all file set
+     *         checks and filters.
+     */
+    private Set<String> getExternalResourceLocations() {
+        final Set<String> externalResources = Sets.newHashSet();
+        for (FileSetCheck check : fileSetChecks) {
+            if (check instanceof ExternalResourceHolder) {
+                final Set<String> locations =
+                    ((ExternalResourceHolder) check).getExternalResourceLocations();
+                externalResources.addAll(locations);
+            }
+        }
+        for (Filter filter : filters.getFilters()) {
+            if (filter instanceof ExternalResourceHolder) {
+                final Set<String> locations =
+                    ((ExternalResourceHolder) filter).getExternalResourceLocations();
+                externalResources.addAll(locations);
+            }
+        }
+        return externalResources;
+    }
+
+    /** Notify all listeners about the audit start. */
+    private void fireAuditStarted() {
+        final AuditEvent event = new AuditEvent(this);
+        for (final AuditListener listener : listeners) {
+            listener.auditStarted(event);
+        }
+    }
+
+    /** Notify all listeners about the audit end. */
+    private void fireAuditFinished() {
+        final AuditEvent event = new AuditEvent(this);
+        for (final AuditListener listener : listeners) {
+            listener.auditFinished(event);
+        }
+    }
+
+    /**
+     * Processes a list of files with all FileSetChecks.
+     * @param files a list of files to process.
+     * @throws CheckstyleException if error condition within Checkstyle occurs.
+     * @noinspection ProhibitedExceptionThrown
+     */
+    private void processFiles(List<File> files) throws CheckstyleException {
+        for (final File file : files) {
+            try {
+                final String fileName = file.getAbsolutePath();
+                final long timestamp = file.lastModified();
+                if (cache != null && cache.isInCache(fileName, timestamp)
+                        || !CommonUtils.matchesFileExtension(file, fileExtensions)) {
+                    continue;
+                }
+                fireFileStarted(fileName);
+                final SortedSet<LocalizedMessage> fileMessages = processFile(file);
+                fireErrors(fileName, fileMessages);
+                fireFileFinished(fileName);
+                if (cache != null && fileMessages.isEmpty()) {
+                    cache.put(fileName, timestamp);
+                }
+            }
+            catch (Exception ex) {
+                // We need to catch all exceptions to put a reason failure (file name) in exception
+                throw new CheckstyleException("Exception was thrown while processing "
+                        + file.getPath(), ex);
+            }
+            catch (Error error) {
+                // We need to catch all errors to put a reason failure (file name) in error
+                throw new Error("Error was thrown while processing " + file.getPath(), error);
+            }
+        }
+    }
+
+    /**
+     * Processes a file with all FileSetChecks.
+     * @param file a file to process.
+     * @return a sorted set of messages to be logged.
+     * @throws CheckstyleException if error condition within Checkstyle occurs.
+     */
+    private SortedSet<LocalizedMessage> processFile(File file) throws CheckstyleException {
+        final SortedSet<LocalizedMessage> fileMessages = Sets.newTreeSet();
+        try {
+            final FileText theText = new FileText(file.getAbsoluteFile(), charset);
+            for (final FileSetCheck fsc : fileSetChecks) {
+                fileMessages.addAll(fsc.process(file, theText));
+            }
+        }
+        catch (final IOException ioe) {
+            LOG.debug("IOException occurred.", ioe);
+            fileMessages.add(new LocalizedMessage(0,
+                    Definitions.CHECKSTYLE_BUNDLE, "general.exception",
+                    new String[] {ioe.getMessage()}, null, getClass(), null));
+        }
+        return fileMessages;
+    }
+
+    /**
+     * Notify all listeners about the beginning of a file audit.
+     *
+     * @param fileName
+     *            the file to be audited
+     */
+    @Override
+    public void fireFileStarted(String fileName) {
+        final String stripped = CommonUtils.relativizeAndNormalizePath(basedir, fileName);
+        final AuditEvent event = new AuditEvent(this, stripped);
+        for (final AuditListener listener : listeners) {
+            listener.fileStarted(event);
+        }
+    }
+
+    /**
+     * Notify all listeners about the errors in a file.
+     *
+     * @param fileName the audited file
+     * @param errors the audit errors from the file
+     */
+    @Override
+    public void fireErrors(String fileName, SortedSet<LocalizedMessage> errors) {
+        final String stripped = CommonUtils.relativizeAndNormalizePath(basedir, fileName);
+        for (final LocalizedMessage element : errors) {
+            final AuditEvent event = new AuditEvent(this, stripped, element);
+            if (filters.accept(event)) {
+                for (final AuditListener listener : listeners) {
+                    listener.addError(event);
+                }
+            }
+        }
+    }
+
+    /**
+     * Notify all listeners about the end of a file audit.
+     *
+     * @param fileName
+     *            the audited file
+     */
+    @Override
+    public void fireFileFinished(String fileName) {
+        final String stripped = CommonUtils.relativizeAndNormalizePath(basedir, fileName);
+        final AuditEvent event = new AuditEvent(this, stripped);
+        for (final AuditListener listener : listeners) {
+            listener.fileFinished(event);
+        }
+    }
+
     @Override
     public void finishLocalSetup() throws CheckstyleException {
         final Locale locale = new Locale(localeLanguage, localeCountry);
@@ -163,7 +389,7 @@ public class Checker extends AutomaticBean implements MessageDispatcher {
 
     @Override
     protected void setupChild(Configuration childConf)
-        throws CheckstyleException {
+            throws CheckstyleException {
         final String name = childConf.getName();
         final Object child;
 
@@ -218,206 +444,11 @@ public class Checker extends AutomaticBean implements MessageDispatcher {
     }
 
     /**
-     * Removes filter.
-     * @param filter filter to remove.
-     */
-    public void removeFilter(Filter filter) {
-        filters.removeFilter(filter);
-    }
-
-    /** Cleans up the object. **/
-    public void destroy() {
-        listeners.clear();
-        filters.clear();
-        if (cache != null) {
-            try {
-                cache.persist();
-            }
-            catch (IOException ex) {
-                throw new IllegalStateException("Unable to persist cache file.", ex);
-            }
-        }
-    }
-
-    /**
      * Add the listener that will be used to receive events from the audit.
      * @param listener the nosy thing
      */
     public final void addListener(AuditListener listener) {
         listeners.add(listener);
-    }
-
-    /**
-     * Removes a given listener.
-     * @param listener a listener to remove
-     */
-    public void removeListener(AuditListener listener) {
-        listeners.remove(listener);
-    }
-
-    /**
-     * Processes a set of files with all FileSetChecks.
-     * Once this is done, it is highly recommended to call for
-     * the destroy method to close and remove the listeners.
-     * @param files the list of files to be audited.
-     * @return the total number of errors found
-     * @throws CheckstyleException if error condition within Checkstyle occurs
-     * @see #destroy()
-     */
-    public int process(List<File> files) throws CheckstyleException {
-        // Prepare to start
-        fireAuditStarted();
-        for (final FileSetCheck fsc : fileSetChecks) {
-            fsc.beginProcessing(charset);
-        }
-
-        processFiles(files);
-
-        // Finish up
-        for (final FileSetCheck fsc : fileSetChecks) {
-            // It may also log!!!
-            fsc.finishProcessing();
-        }
-
-        for (final FileSetCheck fsc : fileSetChecks) {
-            // It may also log!!!
-            fsc.destroy();
-        }
-
-        final int errorCount = counter.getCount();
-        fireAuditFinished();
-        return errorCount;
-    }
-
-    /**
-     * Processes a list of files with all FileSetChecks.
-     * @param files a list of files to process.
-     * @throws CheckstyleException if error condition within Checkstyle occurs.
-     * @noinspection ProhibitedExceptionThrown
-     */
-    private void processFiles(List<File> files) throws CheckstyleException {
-        for (final File file : files) {
-            try {
-                final String fileName = file.getAbsolutePath();
-                final long timestamp = file.lastModified();
-                if (cache != null && cache.isInCache(fileName, timestamp)
-                        || !CommonUtils.matchesFileExtension(file, fileExtensions)) {
-                    continue;
-                }
-                fireFileStarted(fileName);
-                final SortedSet<LocalizedMessage> fileMessages = processFile(file);
-                fireErrors(fileName, fileMessages);
-                fireFileFinished(fileName);
-                if (cache != null && fileMessages.isEmpty()) {
-                    cache.put(fileName, timestamp);
-                }
-            }
-            catch (Exception ex) {
-                // We need to catch all exceptions to put a reason failure (file name) in exception
-                throw new CheckstyleException("Exception was thrown while processing "
-                    + file.getPath(), ex);
-            }
-            catch (Error error) {
-                // We need to catch all errors to put a reason failure (file name) in error
-                throw new Error("Error was thrown while processing " + file.getPath(), error);
-            }
-        }
-    }
-
-    /**
-     * Processes a file with all FileSetChecks.
-     * @param file a file to process.
-     * @return a sorted set of messages to be logged.
-     * @throws CheckstyleException if error condition within Checkstyle occurs.
-     */
-    private SortedSet<LocalizedMessage> processFile(File file) throws CheckstyleException {
-        final SortedSet<LocalizedMessage> fileMessages = Sets.newTreeSet();
-        try {
-            final FileText theText = new FileText(file.getAbsoluteFile(), charset);
-            for (final FileSetCheck fsc : fileSetChecks) {
-                fileMessages.addAll(fsc.process(file, theText));
-            }
-        }
-        catch (final IOException ioe) {
-            LOG.debug("IOException occurred.", ioe);
-            fileMessages.add(new LocalizedMessage(0,
-                Definitions.CHECKSTYLE_BUNDLE, "general.exception",
-                new String[] {ioe.getMessage()}, null, getClass(), null));
-        }
-        return fileMessages;
-    }
-
-    /**
-     * Sets base directory.
-     * @param basedir the base directory to strip off in file names
-     */
-    public void setBasedir(String basedir) {
-        this.basedir = basedir;
-    }
-
-    /** Notify all listeners about the audit start. */
-    private void fireAuditStarted() {
-        final AuditEvent event = new AuditEvent(this);
-        for (final AuditListener listener : listeners) {
-            listener.auditStarted(event);
-        }
-    }
-
-    /** Notify all listeners about the audit end. */
-    private void fireAuditFinished() {
-        final AuditEvent event = new AuditEvent(this);
-        for (final AuditListener listener : listeners) {
-            listener.auditFinished(event);
-        }
-    }
-
-    /**
-     * Notify all listeners about the beginning of a file audit.
-     *
-     * @param fileName
-     *            the file to be audited
-     */
-    @Override
-    public void fireFileStarted(String fileName) {
-        final String stripped = CommonUtils.relativizeAndNormalizePath(basedir, fileName);
-        final AuditEvent event = new AuditEvent(this, stripped);
-        for (final AuditListener listener : listeners) {
-            listener.fileStarted(event);
-        }
-    }
-
-    /**
-     * Notify all listeners about the end of a file audit.
-     *
-     * @param fileName
-     *            the audited file
-     */
-    @Override
-    public void fireFileFinished(String fileName) {
-        final String stripped = CommonUtils.relativizeAndNormalizePath(basedir, fileName);
-        final AuditEvent event = new AuditEvent(this, stripped);
-        for (final AuditListener listener : listeners) {
-            listener.fileFinished(event);
-        }
-    }
-
-    /**
-     * Notify all listeners about the errors in a file.
-     *
-     * @param fileName the audited file
-     * @param errors the audit errors from the file
-     */
-    @Override
-    public void fireErrors(String fileName, SortedSet<LocalizedMessage> errors) {
-        final String stripped = CommonUtils.relativizeAndNormalizePath(basedir, fileName);
-        for (final LocalizedMessage element : errors) {
-            final AuditEvent event = new AuditEvent(this, stripped, element);
-            if (filters.accept(event)) {
-                for (final AuditListener listener : listeners) {
-                    listener.addError(event);
-                }
-            }
-        }
     }
 
     /**
@@ -429,17 +460,17 @@ public class Checker extends AutomaticBean implements MessageDispatcher {
     public final void setFileExtensions(String... extensions) {
         if (extensions == null) {
             fileExtensions = null;
-            return;
         }
-
-        fileExtensions = new String[extensions.length];
-        for (int i = 0; i < extensions.length; i++) {
-            final String extension = extensions[i];
-            if (CommonUtils.startsWithChar(extension, '.')) {
-                fileExtensions[i] = extension;
-            }
-            else {
-                fileExtensions[i] = "." + extension;
+        else {
+            fileExtensions = new String[extensions.length];
+            for (int i = 0; i < extensions.length; i++) {
+                final String extension = extensions[i];
+                if (CommonUtils.startsWithChar(extension, '.')) {
+                    fileExtensions[i] = extension;
+                }
+                else {
+                    fileExtensions[i] = "." + extension;
+                }
             }
         }
     }
@@ -521,7 +552,7 @@ public class Checker extends AutomaticBean implements MessageDispatcher {
      * @throws UnsupportedEncodingException if charset is unsupported.
      */
     public void setCharset(String charset)
-        throws UnsupportedEncodingException {
+            throws UnsupportedEncodingException {
         if (!Charset.isSupported(charset)) {
             final String message = "unsupported charset: '" + charset + "'";
             throw new UnsupportedEncodingException(message);

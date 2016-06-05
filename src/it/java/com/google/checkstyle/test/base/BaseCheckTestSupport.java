@@ -118,7 +118,7 @@ public class BaseCheckTestSupport {
             String messageFileName,
             String[] expected,
             Integer... warnsExpected)
-        throws Exception {
+            throws Exception {
         stream.flush();
         final List<File> theFiles = Lists.newArrayList();
         Collections.addAll(theFiles, processedFiles);
@@ -143,8 +143,8 @@ public class BaseCheckTestSupport {
                 parseInt = parseInt.substring(0, parseInt.indexOf(':'));
                 final int lineNumber = Integer.parseInt(parseInt);
                 assertTrue("input file is expected to have a warning comment on line number "
-                        + lineNumber, theWarnings.remove((Integer) lineNumber)
-                            || previousLineNumber == lineNumber);
+                        + lineNumber, previousLineNumber == lineNumber
+                            || theWarnings.remove((Integer) lineNumber));
                 previousLineNumber = lineNumber;
             }
 

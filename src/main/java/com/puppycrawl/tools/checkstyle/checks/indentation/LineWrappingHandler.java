@@ -74,6 +74,20 @@ public class LineWrappingHandler {
      * @param indentLevel Indentation all wrapped lines should use.
      */
     public void checkIndentation(DetailAST firstNode, DetailAST lastNode, int indentLevel) {
+        checkIndentation(firstNode, lastNode, indentLevel, -1, true);
+    }
+
+    /**
+     * Checks line wrapping into expressions and definitions.
+     *
+     * @param firstNode First node to start examining.
+     * @param lastNode Last node to examine inclusively.
+     * @param indentLevel Indentation all wrapped lines should use.
+     * @param startIndent Indentation first line before wrapped lines used.
+     * @param ignoreFirstLine Test if first line's indentation should be checked or not.
+     */
+    public void checkIndentation(DetailAST firstNode, DetailAST lastNode, int indentLevel,
+            int startIndent, boolean ignoreFirstLine) {
         final NavigableMap<Integer, DetailAST> firstNodesOnLines = collectFirstNodes(firstNode,
                 lastNode);
 
@@ -82,9 +96,18 @@ public class LineWrappingHandler {
             checkAnnotationIndentation(firstLineNode, firstNodesOnLines, indentLevel);
         }
 
-        // First node should be removed because it was already checked before.
-        firstNodesOnLines.remove(firstNodesOnLines.firstKey());
-        final int firstNodeIndent = getFirstNodeIndent(firstLineNode);
+        if (ignoreFirstLine) {
+            // First node should be removed because it was already checked before.
+            firstNodesOnLines.remove(firstNodesOnLines.firstKey());
+        }
+
+        final int firstNodeIndent;
+        if (startIndent == -1) {
+            firstNodeIndent = getLineStart(firstLineNode);
+        }
+        else {
+            firstNodeIndent = startIndent;
+        }
         final int currentIndent = firstNodeIndent + indentLevel;
 
         for (DetailAST node : firstNodesOnLines.values()) {
@@ -97,35 +120,6 @@ public class LineWrappingHandler {
                 logWarningMessage(node, currentIndent);
             }
         }
-    }
-
-    /**
-     * Calculates indentation of first node.
-     *
-     * @param node
-     *            first node.
-     * @return indentation of first node.
-     */
-    private int getFirstNodeIndent(DetailAST node) {
-        final int result;
-
-        if (node.getType() == TokenTypes.LITERAL_IF
-                && node.getParent().getType() == TokenTypes.LITERAL_ELSE) {
-            final DetailAST lcurly = node.getParent().getPreviousSibling();
-            final DetailAST rcurly = lcurly.getLastChild();
-
-            if (lcurly.getType() == TokenTypes.SLIST
-                    && rcurly.getLineNo() == node.getLineNo()) {
-                result = expandedTabsColumnNo(rcurly);
-            }
-            else {
-                result = expandedTabsColumnNo(node.getParent());
-            }
-        }
-        else {
-            result = expandedTabsColumnNo(node);
-        }
-        return result;
     }
 
     /**
@@ -190,7 +184,7 @@ public class LineWrappingHandler {
      */
     private void checkAnnotationIndentation(DetailAST atNode,
             NavigableMap<Integer, DetailAST> firstNodesOnLines, int indentLevel) {
-        final int firstNodeIndent = expandedTabsColumnNo(atNode);
+        final int firstNodeIndent = getLineStart(atNode);
         final int currentIndent = firstNodeIndent + indentLevel;
         final Collection<DetailAST> values = firstNodesOnLines.values();
         final DetailAST lastAnnotationNode = getLastAnnotationNode(atNode);
@@ -235,6 +229,33 @@ public class LineWrappingHandler {
 
         return CommonUtils.lengthExpandedTabs(line, ast.getColumnNo(),
             indentCheck.getIndentationTabWidth());
+    }
+
+    /**
+     * Get the start of the line for the given expression.
+     *
+     * @param ast   the expression to find the start of the line for
+     *
+     * @return the start of the line for the given expression
+     */
+    private int getLineStart(DetailAST ast) {
+        final String line = indentCheck.getLine(ast.getLineNo() - 1);
+        return getLineStart(line);
+    }
+
+    /**
+     * Get the start of the specified line.
+     *
+     * @param line the specified line number
+     *
+     * @return the start of the specified line
+     */
+    private int getLineStart(String line) {
+        int index = 0;
+        while (Character.isWhitespace(line.charAt(index))) {
+            index++;
+        }
+        return CommonUtils.lengthExpandedTabs(line, index, indentCheck.getIndentationTabWidth());
     }
 
     /**

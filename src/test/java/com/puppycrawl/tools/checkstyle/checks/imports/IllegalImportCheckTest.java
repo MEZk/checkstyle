@@ -40,14 +40,14 @@ public class IllegalImportCheckTest extends BaseCheckTestSupport {
 
     @Test
     public void testGetRequiredTokens() {
-        final IllegalImportCheck checkObj = new  IllegalImportCheck();
+        final IllegalImportCheck checkObj = new IllegalImportCheck();
         final int[] expected = {TokenTypes.IMPORT, TokenTypes.STATIC_IMPORT};
         assertArrayEquals(expected, checkObj.getRequiredTokens());
     }
 
     @Test
     public void testWithSupplied()
-        throws Exception {
+            throws Exception {
         final DefaultConfiguration checkConfig =
             createCheckConfig(IllegalImportCheck.class);
         checkConfig.addAttribute("illegalPkgs", "java.io");
@@ -61,7 +61,7 @@ public class IllegalImportCheckTest extends BaseCheckTestSupport {
 
     @Test
     public void testWithDefault()
-        throws Exception {
+            throws Exception {
         final DefaultConfiguration checkConfig =
             createCheckConfig(IllegalImportCheck.class);
         final String[] expected = {

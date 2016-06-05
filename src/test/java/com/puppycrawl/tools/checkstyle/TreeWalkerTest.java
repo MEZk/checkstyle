@@ -81,7 +81,7 @@ public class TreeWalkerTest extends BaseCheckTestSupport {
 
     @Test
     public void testAcceptableTokens()
-        throws Exception {
+            throws Exception {
         final DefaultConfiguration checkConfig =
             createCheckConfig(HiddenFieldCheck.class);
         checkConfig.addAttribute("tokens", "VARIABLE_DEF, ENUM_DEF, CLASS_DEF, METHOD_DEF,"
@@ -253,7 +253,7 @@ public class TreeWalkerTest extends BaseCheckTestSupport {
 
         @Override
         public int[] getAcceptableTokens() {
-            return new int[]{TokenTypes.SINGLE_LINE_COMMENT};
+            return new int[] {TokenTypes.SINGLE_LINE_COMMENT};
         }
 
         @Override
@@ -295,5 +295,4 @@ public class TreeWalkerTest extends BaseCheckTestSupport {
             return CommonUtils.EMPTY_INT_ARRAY;
         }
     }
-
 }

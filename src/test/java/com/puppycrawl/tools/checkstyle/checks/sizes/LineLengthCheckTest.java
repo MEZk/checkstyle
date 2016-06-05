@@ -58,11 +58,11 @@ public class LineLengthCheckTest extends BaseCheckTestSupport {
 
     @Test
     public void testSimple()
-        throws Exception {
+            throws Exception {
         final DefaultConfiguration checkConfig =
             createCheckConfig(LineLengthCheck.class);
         checkConfig.addAttribute("max", "80");
-        checkConfig.addAttribute("ignorePattern",  "^.*is OK.*regexp.*$");
+        checkConfig.addAttribute("ignorePattern", "^.*is OK.*regexp.*$");
         final String[] expected = {
             "18: " + getCheckMessage(MSG_KEY, 80, 81),
             "145: " + getCheckMessage(MSG_KEY, 80, 83),
@@ -72,7 +72,7 @@ public class LineLengthCheckTest extends BaseCheckTestSupport {
 
     @Test
     public void shouldLogActualLineLength()
-        throws Exception {
+            throws Exception {
         final DefaultConfiguration checkConfig =
             createCheckConfig(LineLengthCheck.class);
         checkConfig.addAttribute("max", "80");

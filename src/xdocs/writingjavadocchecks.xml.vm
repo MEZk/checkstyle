@@ -21,34 +21,9 @@
       </macro>
     </section>
 
-    <section name="Overview">
+    <section name="What is Javadoc comment">
       <p>
-      To start implementing your own Check create new class and extend AbstractJavadocCheck. It has two abstract methods:
-      </p>
-      <ul>
-        <li>getDefaultJavadocTokens() - return array of token types that your new Check requires to process (see "Token Types" section)</li>
-        <li>visitJavadocToken(DetailNode) - it's the place you should put tree nodes proccessing. The argument is Javadoc tree node of type you described 
-          before in getDefaultJavadocTokens() method.</li>
-      </ul>
-      <p>
-        Javadoc parser requires XHTML to be used in Javadoc comments, i.e. if there is some open tag(for example &lt;div&gt;) then there have to be its close tag &lt;/div&gt;.
-        This means that if Javadoc comment has incorrect XHTML structure then Javadoc Parser will fail processing the comment, therefore, your new Check can't get its parse tree and process anything from this Javadoc comment. For more details and examples go to "HTML code in Javadoc comments" section.
-      </p>
-    </section>
-
-    <section name="Difference between Java Grammar and Javadoc comments Grammar">
-      <p>
-        Java grammar parses java file due to language specifications. So, there are singleline comments and multiline/block comments in it. Java compiler doesn't know about Javadoc because it is just a multiline comment.
-        To parse multiline comment as a Javadoc comment, checkstyle has second grammar - Javadoc grammar. So, it's supposed to proccess block comments and parse them to Abstract Syntax Tree.
-        The problem is that Java grammar is old one and uses ANTLR v2, while Javadoc grammar uses ANTLR v4. Because of that, these two grammars and their trees are not compatible.
-        Java AST consists of DetailAST objects, while Javadoc AST consists of DetailNode objects.
-      </p>
-    </section>
-
-    <section name="Tools to see Javadoc tree structure">
-      <p>
-      Checkstyle can print Abstract Syntax Tree including Javadoc trees. You need to run checkstyle jar file with <b>-J</b> argument, providing java file.
-      </p>
+      Javadoc comment is multiline comment <code>/*  */</code> that starts with <b>*</b> character and placed above class definition, interface definition, enum definition, method definition or field definition.
       <p>For example, here is java file:</p>
       <source><![CDATA[
 /**
@@ -59,8 +34,94 @@ public class MyClass {
 
 }
       ]]></source>
+      Javadoc content is:
+      <source><![CDATA[
+ * My <b>class</b>.
+ * @see AbstractClass
+      ]]></source>
+      </p>
+      Attention that java comment is start with <code>/*</code>, following with Identificator of comment type. Javadoc Identificator is <code>*</code>. All symbols after Javadoc Identificator till <code>*/</code> are part of javadoc comment.
+      <p>In internet you can find different types of documentation
+      generation tools similar to javadoc. Such tools rely on specific Identificator: "!", "#", "$".
+      Comments looks like <code>"/*! some comment */"</code> , <code>"/*# some comment */"</code> , <code>"/*$ some comment */"</code>. Such multiline comments are not a javadoc.
+      </p>
+    </section>
+
+    <section name="Limitations">
+      <p>
+      Javadoc by specification could contain any HTML tags that let user generate content he needs.
+      Checkstyle can not parse something that looks like an HTML, so limitation appear.
+      </p>
+      <p>
+      The comment should be written in XHTML to build nested AST Tree that most Checks expect. This means that every HTML tag should have matching closed HTML tag or it is self-closed tag.
+      </p>
+      <p>
+      The only exceptions are HTML 4 tags that are "don't require closing" tag, so, Checkstyle won't show error about missing closing tag, however, it leads to broken XHTML structure and as result leads to
+      not-nested content of the HTML tags in Abstract Syntax Tree of the Javadoc comment.
+      <br/>
+      In other words if HTML tags are not closed Javadoc grammar cannot determine content of these tags,
+      so structure of the parse tree will not be nested like it is while using XHTML.
+      It is done just to not fail on every Javadoc comment, because there are tons of using unclosed tags, etc.
+      </p>
+      <p>
+        For More details about HTML in AST read <a href="#HTML_Code_In_Javadoc_Comments">HTML Code In Javadoc Comments</a> section.
+      </p>
+    </section>
+
+    <section name="How to create Javadoc Check">
+      <p>
+        Principle of writing Javadoc Checks is similar to writing regular Checks. You just extend another class and use another token types.
+      </p>
+      <p>
+      To start implementing new Check create new class and extend <a href='apidocs/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheck.html'>AbstractJavadocCheck</a>. It has two abstract methods you should implement:
+      </p>
+      <ul>
+        <li><a href="apidocs/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheck.html#getDefaultJavadocTokens--">getDefaultJavadocTokens()</a> - return int array of javadoc token types your Check is going to process. The array should contain int constants from <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html">JavadocTokenTypes</a> class.
+          There is also <a href="apidocs/com/puppycrawl/tools/checkstyle/api/TokenTypes.html">TokenTypes</a> class in Checkstyle. Make sure you use <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html">JavadocTokenTypes</a> class in your Check, because the <a href="apidocs/com/puppycrawl/tools/checkstyle/api/TokenTypes.html">TokenTypes</a> is used to describe standard Java <a href="apidocs/com/puppycrawl/tools/checkstyle/api/DetailAST.html">DetailAST</a> token type.</li>
+        <li><a href="apidocs/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheck.html#visitJavadocToken-com.puppycrawl.tools.checkstyle.api.DetailNode-">visitJavadocToken(DetailNode)</a> - it's the place you should put tree nodes proccessing. The argument is Javadoc tree node of type you described before in <a href="apidocs/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheck.html#getDefaultJavadocTokens--">getDefaultJavadocTokens()</a> method.</li>
+      </ul>
+    </section>
+
+    <section name="Difference between Java Grammar and Javadoc comments Grammar">
+      <p>
+        Java grammar parses java file base on Java language specifications. So, there are singleline comments and multiline/block comments in it. Java compiler doesn't know about Javadoc because it is just a multiline comment.
+        To parse multiline comment as a Javadoc comment, checkstyle has special Parser
+        that is based on ANTLR Javadoc grammar. So, it's supposed to proccess block comments
+        that start with Javadoc Identificator and parse them to Abstract Syntax Tree (AST).
+      </p>
+      <p>
+        The difference is that Java grammar uses ANTLR v2, while Javadoc grammar uses ANTLR v4. Because of that, these two grammars and their trees are not compatible.
+        Java AST consists of <a href="apidocs/com/puppycrawl/tools/checkstyle/api/DetailAST.html">DetailAST</a> objects, while Javadoc AST consists of <a href="apidocs/com/puppycrawl/tools/checkstyle/api/DetailNode.html">DetailNode</a> objects.
+      </p>
+      <p>
+        Main Java grammar skips any whitespaces and newlines, so in Java Abstract Syntax Tree there are no whitespace/newline nodes.
+        In Javadoc comment every whitespace matters, and Javadoc Checks need all those whitespaces and newline nodes to verify format and content of the Javadoc comment.
+        Because of that Javadoc grammar includes all whitespaces, newlines to the parse tree
+        (<a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#WS">WS</a>, <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#NEWLINE">NEWLINE</a>).
+        As you may notice there is also <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#CHAR">CHAR</a> javadoc token that presents single character.
+        It is quite useless and is used for building only <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#TEXT">TEXT</a> node which consists of
+        <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#CHAR">CHAR</a> and
+        <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#WS">WS</a> nodes, but it is implementation nuance.
+        (In future we will try to resolve this. See <a href="https://github.com/checkstyle/checkstyle/issues/3170">Github Issue #3170</a>).
+      </p>
+    </section>
+
+    <section name="Tool to print Javadoc tree structure">
+      <p>
+      Checkstyle can print Abstract Syntax Tree for Java and Javadoc trees. You need to run checkstyle jar file with <b>-J</b> argument, providing java file.
+      </p>
+      <p>For example, here is MyClass.java file:</p>
+      <source><![CDATA[
+/**
+ * My <b>class</b>.
+ * @see AbstractClass
+ */
+public class MyClass {
+
+}
+      ]]></source>
       <p>Command:</p>
-      <source>java -jar checkstyle-6.18-all.jar -J MyClass.java</source>
+      <source>java -jar checkstyle-X.XX-all.jar -J MyClass.java</source>
       <p>Output:</p>
       <source><![CDATA[
 CLASS_DEF -> CLASS_DEF [5:0]
@@ -112,16 +173,17 @@ CLASS_DEF -> CLASS_DEF [5:0]
       ]]></source>
       <p>
       As you see very small java file transforms to a huge Abstract Syntax Tree, because that is the most detailed tree including all components of the java file: classes, methods, comments, etc.
-      But in most cases while developing Javadoc Check you need only parse tree of the exact Javadoc comment.
+      </p>
+      <p>In most cases while developing Javadoc Check you need only parse tree of the exact Javadoc comment.
       To do that just copy Javadoc comment to separate file and remove <b>/**</b> at the begining and <b>*/</b> at the end. After that, run checkstyle with <b>-j</b> argument.
       </p>
-      <p>File:</p>
+      <p>MyJavadocComment.javadoc file:</p>
       <source><![CDATA[
  * My <b>class</b>.
  * @see AbstractClass
       ]]></source>
       <p>Command:</p>
-      <source>java -jar checkstyle-6.18-SNAPSHOT-all.jar -j MyJavadocComment.javadoc</source>
+      <source>java -jar checkstyle-X.XX-all.jar -j MyJavadocComment.javadoc</source>
       <p>Output:</p>
       <source><![CDATA[
 JAVADOC ->  * My <b>class</b>.\r\n * @see AbstractClass<EOF> [0:0]
@@ -162,21 +224,245 @@ JAVADOC ->  * My <b>class</b>.\r\n * @see AbstractClass<EOF> [0:0]
       ]]></source>
     </section>
 
-    <section name="Token types">
+    <section name="Access Java AST from Javadoc Check">
+      As you already know Javadoc parse tree is result of parsing block comment. There is a method to get the original block comment from Javadoc Check.
+      You may need this block comment to check its position or something else in java <a href="apidocs/com/puppycrawl/tools/checkstyle/api/DetailAST.html">DetailAST</a> tree.
+      <p>
+      For example, to write a JavadocCheck that verifies @param tags in Javadoc comment of a method definition, you also need all method's parameter names. To get method definition AST you should access java <a href="apidocs/com/puppycrawl/tools/checkstyle/api/DetailAST.html">DetailAST</a> tree from javadoc Check. For this purpose use <a href="apidocs/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheck.html#getBlockCommentAst--">getBlockCommentAst()</a> method that returns <a href="apidocs/com/puppycrawl/tools/checkstyle/api/DetailAST.html">DetailAST</a> node.
+      </p>
+      <p>
+        Example:
+      </p>
+      <source>
+class MyCheck extends AbstractJavadocCheck {
+
+    @Override
+    public int[] getDefaultJavadocTokens() {
+        return new int[]{JavadocTokenTypes.PARAMETER_NAME};
+    }
+
+    @Override
+    public void visitJavadocToken(DetailNode paramNameNode) {
+        String javadocParamName = paramNameNode.getText();
+        DetailAST blockCommentAst = getBlockCommentAst();
+
+        if (BlockCommentPosition.isOnMethod(blockCommentAst)) {
+
+            DetailAST methodDef = blockCommentAst.getParent();
+            DetailAST methodParam = findMethodParameter(methodDef);
+            String methodParamName = methodParam.getText();
+
+            if (!javadocParamName.equals(methodParamName)) {
+                log(methodParam, "params.dont.match");
+            }
+
+        }
+    }
+}
+      </source>
     </section>
 
-    <section name="HTML code in Javadoc comments">
+    <section name="HTML Code In Javadoc Comments">
+      <p>
+        Checkstyle supports HTML4 tags in Javadoc comments: <a href="https://www.w3.org/TR/html4/index/elements.html">all HTML4 elements</a>.
+      </p>
+      <p>
+        HTML 4 is picked just to have a list of tags that are "don't require closing tag" and a list of tags whose end tag is forbidden (also known as <a href="http://www.w3schools.com/html/html_elements.asp">empty html tags</a>, for example <a href="https://www.w3.org/TR/html4/struct/text.html#edef-BR">BR tag</a>).
+      </p>
+      <p>
+        HTML tags with "don't require closing tag" tag: &lt;P&gt;, &lt;LI&gt;, &lt;TR&gt;, &lt;TD&gt;, &lt;TH&gt;, &lt;BODY&gt;, &lt;COLGROUP&gt;, &lt;DD&gt;,
+        &lt;DT&gt;, &lt;HEAD&gt;, &lt;HTML&gt;, &lt;OPTION&gt;, &lt;TBODY&gt;, &lt;THEAD&gt;, &lt;TFOOT&gt;.
+      </p>
+      <p>
+        Empty HTML tags: &lt;AREA&gt;, &lt;BASE&gt;, &lt;BASEFONT&gt;, &lt;BR&gt;, &lt;COL&gt;, &lt;FRAME&gt;,
+        &lt;HR&gt;, &lt;IMG&gt;, &lt;INPUT&gt;, &lt;ISINDEX&gt;, &lt;LINK&gt;, &lt;META&gt;, &lt;PARAM&gt;.
+      </p>
+      <p>
+        If Checkstyle meets unknown tag (for example HTML5 tag)
+        it doesn't fail and parses this tag as <a href="apidocs/com/puppycrawl/tools/checkstyle/api/JavadocTokenTypes.html#HTML_TAG">HTML_TAG</a> Javadoc token type.
+        Just follow XHTML rules to make Checkstyle javadoc parser make nested AST, even though tags are unknown.
+
+        <source><![CDATA[
+<audio><source src="horse.ogg" type="audio/ogg"/></audio>
+        ]]></source>
+
+        <source><![CDATA[
+JAVADOC -> <audio><source src="horse.ogg" type="audio/ogg"/></audio><EOF> [0:0]
+|--HTML_ELEMENT -> <audio><source src="horse.ogg" type="audio/ogg"/></audio> [0:0]
+|   `--HTML_TAG -> <audio><source src="horse.ogg" type="audio/ogg"/></audio> [0:0]
+|       |--HTML_ELEMENT_OPEN -> <audio> [0:0]
+|       |   |--OPEN -> < [0:0]
+|       |   |--HTML_TAG_NAME -> audio [0:1]
+|       |   `--CLOSE -> > [0:6]
+|       |--HTML_ELEMENT -> <source src="horse.ogg" type="audio/ogg"/> [0:7]
+|       |   `--SINGLETON_ELEMENT -> <source src="horse.ogg" type="audio/ogg"/> [0:7]
+|       |       `--SINGLETON_TAG -> <source src="horse.ogg" type="audio/ogg"/> [0:7]
+|       |           |--OPEN -> < [0:7]
+|       |           |--HTML_TAG_NAME -> source [0:8]
+|       |           |--WS ->   [0:14]
+|       |           |--ATTRIBUTE -> src="horse.ogg" [0:15]
+|       |           |   |--HTML_TAG_NAME -> src [0:15]
+|       |           |   |--EQUALS -> = [0:18]
+|       |           |   `--ATTR_VALUE -> "horse.ogg" [0:19]
+|       |           |--WS ->   [0:31]
+|       |           |--ATTRIBUTE -> type="audio/ogg" [0:32]
+|       |           |   |--HTML_TAG_NAME -> type [0:32]
+|       |           |   |--EQUALS -> = [0:36]
+|       |           |   `--ATTR_VALUE -> "audio/ogg" [0:37]
+|       |           `--SLASH_CLOSE -> /> [0:49]
+|       `--HTML_ELEMENT_CLOSE -> </audio> [0:51]
+|           |--OPEN -> < [0:51]
+|           |--SLASH -> / [0:52]
+|           |--HTML_TAG_NAME -> audio [0:53]
+|           `--CLOSE -> > [0:58]
+`--EOF -> <EOF> [0:59]
+        ]]></source>
+      </p>
+
+    <p>
+      Here is what you get if unknown tag doesn't have matching end tag (for example, HTML5 tag &lt;audio&gt;): <br/>
+      Input:
+      <source>&lt;audio&gt;test</source>
+      Output:
+      <source>[ERROR:0] Javadoc comment at column 1 has parse error. Missed HTML close tag 'audio'. Sometimes it means that close tag missed for one of previous tags.</source>
+      As you see Javadoc parser prints error and doesn't build AST if unknown HTML tag doesn't have matching end tag.
+    </p>
+
+    <p>More examples:</p>
+
+    <table style="table-layout: fixed;">
+      <tr>
+        <td>
+          1) Unclosed paragraph HTML tag. As you see in the tree, content of the paragraph tag is not nested to this tag.
+          That is because HTML tags are not closed by pair tag &lt;/p&gt;, and Checkstyle requires XHTML to predictably parse Javadoc comments.
+        </td>
+        <td>
+          2) Here is correct version with open and closed HTML tags.
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <source><![CDATA[
+<p> First
+<p> Second
+          ]]></source>
+        </td>
+        <td>
+          <source><![CDATA[
+<p> First </p>
+<p> Second </p>
+          ]]></source>
+        </td>
+      </tr>
+
+      <tr>
+        <td>
+          <source><![CDATA[
+JAVADOC -> <p> First\r\n<p> Second<EOF> [0:0]
+|--HTML_ELEMENT -> <p> [0:0]
+|   `--P_TAG_OPEN -> <p> [0:0]
+|       |--OPEN -> < [0:0]
+|       |--P_HTML_TAG_NAME -> p [0:1]
+|       `--CLOSE -> > [0:2]
+|--TEXT ->  First [0:3]
+|   |--WS ->   [0:3]
+|   |--CHAR -> F [0:4]
+|   |--CHAR -> i [0:5]
+|   |--CHAR -> r [0:6]
+|   |--CHAR -> s [0:7]
+|   `--CHAR -> t [0:8]
+|--NEWLINE -> \r\n [0:9]
+|--HTML_ELEMENT -> <p> [1:0]
+|   `--P_TAG_OPEN -> <p> [1:0]
+|       |--OPEN -> < [1:0]
+|       |--P_HTML_TAG_NAME -> p [1:1]
+|       `--CLOSE -> > [1:2]
+|--TEXT ->  Second [1:3]
+|   |--WS ->   [1:3]
+|   |--CHAR -> S [1:4]
+|   |--CHAR -> e [1:5]
+|   |--CHAR -> c [1:6]
+|   |--CHAR -> o [1:7]
+|   |--CHAR -> n [1:8]
+|   `--CHAR -> d [1:9]
+`--EOF -> <EOF> [1:10]
+          ]]></source>
+        </td>
+        <td>
+          <source><![CDATA[
+JAVADOC -> <p> First </p>\r\n<p> Second </p><EOF> [0:0]
+|--HTML_ELEMENT -> <p> First </p> [0:0]
+|   `--PARAGRAPH -> <p> First </p> [0:0]
+|       |--P_TAG_OPEN -> <p> [0:0]
+|       |   |--OPEN -> < [0:0]
+|       |   |--P_HTML_TAG_NAME -> p [0:1]
+|       |   `--CLOSE -> > [0:2]
+|       |--TEXT ->  First  [0:3]
+|       |   |--WS ->   [0:3]
+|       |   |--CHAR -> F [0:4]
+|       |   |--CHAR -> i [0:5]
+|       |   |--CHAR -> r [0:6]
+|       |   |--CHAR -> s [0:7]
+|       |   |--CHAR -> t [0:8]
+|       |   `--WS ->   [0:9]
+|       `--P_TAG_CLOSE -> </p> [0:10]
+|           |--OPEN -> < [0:10]
+|           |--SLASH -> / [0:11]
+|           |--P_HTML_TAG_NAME -> p [0:12]
+|           `--CLOSE -> > [0:13]
+|--NEWLINE -> \r\n [0:14]
+|--HTML_ELEMENT -> <p> Second </p> [1:0]
+|   `--PARAGRAPH -> <p> Second </p> [1:0]
+|       |--P_TAG_OPEN -> <p> [1:0]
+|       |   |--OPEN -> < [1:0]
+|       |   |--P_HTML_TAG_NAME -> p [1:1]
+|       |   `--CLOSE -> > [1:2]
+|       |--TEXT ->  Second  [1:3]
+|       |   |--WS ->   [1:3]
+|       |   |--CHAR -> S [1:4]
+|       |   |--CHAR -> e [1:5]
+|       |   |--CHAR -> c [1:6]
+|       |   |--CHAR -> o [1:7]
+|       |   |--CHAR -> n [1:8]
+|       |   |--CHAR -> d [1:9]
+|       |   `--WS ->   [1:10]
+|       `--P_TAG_CLOSE -> </p> [1:11]
+|           |--OPEN -> < [1:11]
+|           |--SLASH -> / [1:12]
+|           |--P_HTML_TAG_NAME -> p [1:13]
+|           `--CLOSE -> > [1:14]
+`--EOF -> <EOF> [1:15]
+          ]]></source>
+        </td>
+      </tr>
+    </table>
     </section>
 
     <section name="Checkstyle SDK GUI">
+      Not implemented yet. See <a href="https://github.com/checkstyle/checkstyle/issues/408">Github Issue #408</a>.
     </section>
 
-    <section name="Access Java AST from Javadoc Check">
+    <section name="Customize token types in Javadoc Checks">
+      Not implemented yet. See <a href="https://github.com/checkstyle/checkstyle/issues/2427">Github Issue #2427</a>.
     </section>
 
     <section name="Integrating new Javadoc Check">
+      Javadoc Checks as well as regular Checks extend <a href="apidocs/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheck.html">AbstractCheck</a> class. So integrating new Javadoc Check is similar to <a href="writingchecks.html#Integrate_your_Check">integrating other Checks</a>.
+    </section>
+
+    <section name="Declare check's external resource locations">
+      <p>
+        See <a href="writingchecks.html#Declare_checks_external_resource_locations">Declare check's external resource locations</a>.
+      </p>
+    </section>
+
+    <section name="Examples of Javadoc Checks">
+      The best source knowledge about how to write Javadoc Checks
+      could be taken from
+      <a href="https://github.com/search?q=path%3Asrc%2Fmain%2Fjava+repo%3Acheckstyle%2Fcheckstyle+%22extends+AbstractJavadocCheck%22">
+        existing Checks</a>.
     </section>
 
   </body>
 </document>
-
