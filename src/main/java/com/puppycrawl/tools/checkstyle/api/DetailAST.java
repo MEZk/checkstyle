@@ -392,6 +392,37 @@ public final class DetailAST extends CommonASTWithHiddenTokens {
     }
 
     @Override
+    public boolean equals(AST ast) {
+        return equals((Object) ast);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        final boolean equal;
+
+        if (o == null || getClass() != o.getClass()) {
+            equal = false;
+        }
+        else {
+            final DetailAST detailAST = (DetailAST) o;
+            equal = lineNo == detailAST.lineNo
+                && columnNo == detailAST.columnNo
+                && getType() == detailAST.getType();
+//            || getText().equals(detailAST.getText());
+        }
+
+        return equal;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = lineNo;
+        result = 31 * result + columnNo;
+        result = 31 * result + getType();
+        return result;
+    }
+
+    @Override
     public String toString() {
         return super.toString() + "[" + getLineNo() + "x" + getColumnNo() + "]";
     }

@@ -20,6 +20,7 @@
 package com.puppycrawl.tools.checkstyle.api;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -37,6 +38,7 @@ import org.junit.Test;
 import org.powermock.reflect.Whitebox;
 
 import com.puppycrawl.tools.checkstyle.TreeWalker;
+import nl.jqno.equalsverifier.EqualsVerifier;
 
 /**
  * TestCase to check DetailAST.
@@ -211,6 +213,145 @@ public class DetailASTTest {
         ast.setColumnNo(0);
         ast.setLineNo(0);
         assertEquals("text[0x0]", ast.toString());
+    }
+
+    @Test
+    public void testEqualsAndHashCode() {
+        EqualsVerifier.forClass(DetailAST.class).verify();
+    }
+
+    @Test
+    public void testEqualsIsReflexive() {
+        final DetailAST node = new DetailAST();
+        node.setLineNo(1);
+        node.setColumnNo(1);
+        node.setType(TokenTypes.IDENT);
+
+        assertTrue(node.equals(node));
+    }
+
+    @Test
+    public void testEqualsIsSymmetric() {
+        final DetailAST node1 = new DetailAST();
+        node1.setLineNo(1);
+        node1.setColumnNo(1);
+        node1.setType(TokenTypes.IDENT);
+
+        final DetailAST node2 = new DetailAST();
+        node2.setLineNo(1);
+        node2.setColumnNo(1);
+        node2.setType(TokenTypes.IDENT);
+
+        assertTrue(node1.equals(node2));
+        assertTrue(node2.equals(node1));
+    }
+
+    @Test
+    public void testEqualsIsTransitive() {
+        final DetailAST node1 = new DetailAST();
+        node1.setLineNo(1);
+        node1.setColumnNo(1);
+        node1.setType(TokenTypes.IDENT);
+
+        final DetailAST node2 = new DetailAST();
+        node2.setLineNo(1);
+        node2.setColumnNo(1);
+        node2.setType(TokenTypes.IDENT);
+
+        final DetailAST node3 = new DetailAST();
+        node3.setLineNo(1);
+        node3.setColumnNo(1);
+        node3.setType(TokenTypes.IDENT);
+
+        final boolean transitiveEquivalent = node1.equals(node2)
+            && node2.equals(node3) && node1.equals(node3);
+
+        assertTrue(transitiveEquivalent);
+    }
+
+    @Test
+    public void testEqualsIsConsistent() {
+        final DetailAST node1 = new DetailAST();
+        node1.setLineNo(1);
+        node1.setColumnNo(1);
+        node1.setType(TokenTypes.IDENT);
+
+        final DetailAST node2 = new DetailAST();
+        node2.setLineNo(1);
+        node2.setColumnNo(1);
+        node2.setType(TokenTypes.IDENT);
+
+        final int equalsAttemptsCount = 1000;
+        for (int i = 0; i < equalsAttemptsCount; i++) {
+            assertTrue(node1.equals(node2));
+        }
+    }
+
+    @Test
+    public void testEqualsReturnsFalseWithNullOperand() {
+        final DetailAST node = new DetailAST();
+        node.setLineNo(1);
+        node.setColumnNo(1);
+        node.setType(TokenTypes.IDENT);
+
+        assertFalse(node.equals(null));
+    }
+
+    @Test
+    public void testEquivalentObjectsHaveEqualHashCodes() {
+        final DetailAST node1 = new DetailAST();
+        node1.setLineNo(1);
+        node1.setColumnNo(1);
+        node1.setType(TokenTypes.IDENT);
+
+        final int hash1 = node1.hashCode();
+
+        final DetailAST node2 = new DetailAST();
+        node2.setLineNo(1);
+        node2.setColumnNo(1);
+        node2.setType(TokenTypes.IDENT);
+
+        final int hash2 = node2.hashCode();
+
+        assertTrue(node1.equals(node2) && hash1 == hash2);
+    }
+
+    @Test
+    public void testHashCodeForObjectWithUnsetProperties() {
+        assertEquals(0, new DetailAST().hashCode());
+    }
+
+    @Test
+    public void testEqualsShouldReturnFalseForUnequalObjects() {
+        final DetailAST node1 = new DetailAST();
+        node1.setLineNo(1);
+        node1.setColumnNo(1);
+        node1.setType(TokenTypes.IDENT);
+        final DetailAST node2 = new DetailAST();
+        node2.setLineNo(1);
+        node2.setColumnNo(1);
+        node2.setType(TokenTypes.CLASS_DEF);
+        assertFalse(node1.equals(node2));
+
+        final DetailAST node3 = new DetailAST();
+        node3.setLineNo(1);
+        node3.setColumnNo(1);
+        node3.setType(TokenTypes.IDENT);
+        final DetailAST node4 = new DetailAST();
+        node4.setLineNo(2);
+        node4.setColumnNo(1);
+        node4.setType(TokenTypes.IDENT);
+        assertFalse(node3.equals(node4));
+
+        final DetailAST node5 = new DetailAST();
+        node5.setLineNo(1);
+        node5.setColumnNo(1);
+        node5.setType(TokenTypes.IDENT);
+        final DetailAST node6 = new DetailAST();
+        node6.setLineNo(1);
+        node6.setColumnNo(2);
+        node6.setType(TokenTypes.IDENT);
+        assertFalse(node5.equals(node6));
     }
 
     private static void checkDir(File dir) throws Exception {
