@@ -246,7 +246,18 @@ public abstract class AbstractCheck extends AbstractViolationReporter {
      * @param args arguments to format
      */
     public final void log(DetailAST ast, String key, Object... args) {
-        log(ast.getLineNo(), ast.getColumnNo(), key, args);
+        messages.add(
+            new LocalizedMessage(
+                ast.getLineNo(),
+                ast.getColumnNo(),
+                ast.getType(),
+                getMessageBundle(),
+                key,
+                args,
+                getSeverityLevel(),
+                getId(),
+                getClass(),
+                getCustomMessages().get(key)));
     }
 
     @Override
